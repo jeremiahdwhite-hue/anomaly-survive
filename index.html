@@ -733,6 +733,122 @@ body.hunt-mode-active #vision-overlay {
   white-space: nowrap;
 }
 
+/* 3D Furniture Scanner Grid */
+.furniture-scan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.furniture-btn {
+  background: rgba(8, 20, 36, 0.85);
+  border: 1px solid var(--border-glass);
+  color: var(--text-main);
+  font-family: var(--font-hud);
+  font-size: 0.72rem;
+  padding: 8px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+.furniture-btn:hover, .furniture-btn:active {
+  border-color: var(--cyan);
+  background: rgba(0, 255, 204, 0.15);
+  box-shadow: 0 0 10px var(--cyan-glow);
+}
+
+.furniture-btn .btn-icon {
+  font-size: 1.2rem;
+}
+
+.scanned-objects-container {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 80px;
+  overflow-y: auto;
+}
+
+.scanned-object-chip {
+  background: rgba(0, 255, 204, 0.12);
+  border: 1px solid var(--border-glass);
+  color: var(--text-main);
+  font-family: var(--font-hud);
+  font-size: 0.7rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chip-del-btn {
+  background: none;
+  border: none;
+  color: var(--crimson);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+/* --- 3D AR CENTER TARGETING RETICLE --- */
+#ar-reticle {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+  pointer-events: none;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reticle-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: 1.5px dashed var(--cyan);
+  border-radius: 50%;
+  animation: reticle-rotate 8s linear infinite;
+  opacity: 0.8;
+}
+
+.reticle-dot {
+  width: 5px;
+  height: 5px;
+  background-color: var(--cyan);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--cyan);
+}
+
+.reticle-telemetry {
+  position: absolute;
+  bottom: -22px;
+  font-family: var(--font-hud);
+  font-size: 0.65rem;
+  color: var(--cyan);
+  white-space: nowrap;
+  text-shadow: 0 0 6px rgba(0, 255, 204, 0.8);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+@keyframes reticle-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 /* --- EVIDENCE CODEX MODAL --- */
 .codex-grid {
   display: flex;
@@ -1004,6 +1120,13 @@ body.hunt-mode-active #vision-overlay {
   <div class="scanlines-overlay"></div>
   <div id="vision-overlay"></div>
 
+  <!-- 3D AR Spatial Reticle with Real-Time Distance Raycaster -->
+  <div id="ar-reticle">
+    <div class="reticle-ring"></div>
+    <div class="reticle-dot"></div>
+    <div class="reticle-telemetry"><span id="reticle-dist-val">1.8m</span></div>
+  </div>
+
   <!-- Tracking Lost Tactical Advisory Banner -->
   <div id="tracking-lost-banner" class="hidden">
     <div class="tracking-banner-content">
@@ -1134,6 +1257,7 @@ body.hunt-mode-active #vision-overlay {
         <button id="btn-toggle-camera" class="action-btn">📷 CAM</button>
         <button id="btn-toggle-flashlight" class="action-btn">🔦 LIGHT</button>
         <button id="btn-toggle-mic" class="action-btn">🎙️ MIC</button>
+        <button id="btn-quick-scan-obj" class="action-btn" title="Scan furniture in front of camera">📦 SCAN</button>
         <button id="btn-sim-mic" class="action-btn" title="Simulate voice spike on desktop">🗣️ NOISE</button>
         <button id="btn-codex" class="action-btn primary">📖 CODEX</button>
       </div>
@@ -1145,32 +1269,32 @@ body.hunt-mode-active #vision-overlay {
     <div class="modal-box">
       <div class="modal-header">
         <h2>ANOMALY PROTOCOL</h2>
-        <div class="modal-subtitle">WebAR Whole-House Hunt // Paratronics Urbex</div>
+        <div class="modal-subtitle">WebAR Whole-House Hunt // 3D Spatial LiDAR Scanner</div>
       </div>
       <div class="modal-body">
         <div class="urbex-briefing">
           <strong>OPERATIVE BRIEFING:</strong> An unknown spectral entity is haunting this physical building.
-          You must map the physical rooms, drop Safe Zone wards (under couches/tables), survive 3 hunts, and identify the entity.
+          You must calibrate your room, 3D scan real furniture (shelves, tables, chairs, couches), drop Safe Zone wards, survive 3 hunts, and deduce the entity.
         </div>
         <ul class="feature-list">
-          <li>📐 <strong>Phase 1:</strong> Calibrate Floor, Ceiling & Scan Rooms</li>
-          <li>🛡️ <strong>Safe Zones:</strong> Tap AR ground to mark hiding spots</li>
-          <li>📻 <strong>Tools:</strong> Spirit Box, EMF Meter, Thermal Scanner</li>
-          <li>⚠️ <strong>Survival:</strong> Occlude Line of Sight for 5s during hunts</li>
-          <li>🎙️ <strong>Microphone:</strong> Quiet! Certain ghosts hunt on vocal spikes</li>
+          <li>📐 <strong>Phase 1:</strong> Calibrate Floor, Ceiling & Walk Room Perimeter</li>
+          <li>📦 <strong>3D Furniture Scanner:</strong> Map Shelves, Tables, Couches, Chairs (Blocks LOS / Hiding)</li>
+          <li>🛡️ <strong>Safe Zones:</strong> Crouch under scanned tables or drop protective wards</li>
+          <li>📻 <strong>Tools:</strong> Spirit Box, EMF Meter, Thermal Imager</li>
+          <li>⚠️ <strong>Survival:</strong> Occlude Line of Sight behind 3D obstacles for 5s during hunts</li>
         </ul>
-        <button id="btn-start-urbex" class="btn-primary">BEGIN PHYSICAL SCAN</button>
-        <button id="btn-quick-demo" class="btn-secondary">⚡ INSTANT DEMO PRESET (DESKTOP/CODEPEN)</button>
+        <button id="btn-start-urbex" class="btn-primary">BEGIN 3D PHYSICAL SCAN</button>
+        <button id="btn-quick-demo" class="btn-secondary">⚡ INSTANT 3D DEMO PRESET (DESKTOP/CODEPEN)</button>
       </div>
     </div>
   </div>
 
-  <!-- CALIBRATION & ROOM SCANNER MODAL -->
+  <!-- CALIBRATION & 3D ROOM SCANNER MODAL -->
   <div id="calibration-modal" class="modal-overlay hidden">
     <div class="modal-box">
       <div class="modal-header">
-        <h2>PHYSICAL CALIBRATION</h2>
-        <div class="modal-subtitle">Room-by-Room Spatial Mapping & Safe Zones</div>
+        <h2>3D SPATIAL CALIBRATION</h2>
+        <div class="modal-subtitle">Room-by-Room LiDAR Scanner & Furniture Mapping</div>
       </div>
       <div class="modal-body">
         <div class="calib-steps-container">
@@ -1202,32 +1326,64 @@ body.hunt-mode-active #vision-overlay {
           <!-- Step 3: Room by Room Scanner -->
           <div id="calib-step-3" class="calib-step hidden">
             <div class="calib-step-header">
-              <span class="step-num">STEP 3: ROOM SCANNER</span>
+              <span class="step-num">STEP 3: ROOM PERIMETER SCAN</span>
               <span><span id="rooms-mapped-count">0</span> Rooms</span>
             </div>
             <p id="room-status-text" style="font-size: 0.8rem; color: var(--text-dim);">Enter zone name and walk room perimeter:</p>
             <div class="calib-input-row">
-              <input type="text" id="room-name-input" placeholder="e.g. Living Room / Hallway" value="Living Room">
+              <input type="text" id="room-name-input" placeholder="e.g. Living Room / Study" value="Living Room">
               <button id="btn-start-room-scan" class="calib-btn">START SCAN</button>
               <button id="btn-add-corner" class="calib-btn hidden">ANCHOR CORNER</button>
               <button id="btn-end-room-scan" class="calib-btn hidden">END SCAN</button>
             </div>
           </div>
 
-          <!-- Step 4: Safe Zone Designation -->
+          <!-- Step 4: 3D Furniture & Physical Obstacle Scanner -->
           <div id="calib-step-4" class="calib-step hidden">
             <div class="calib-step-header">
-              <span class="step-num">STEP 4: SAFE ZONES</span>
+              <span class="step-num">STEP 4: 3D FURNITURE SCANNER</span>
+              <span><span id="scanned-objects-count">0</span> Objects</span>
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-dim);">Aim center crosshair at real furniture and tap to map in 3D:</p>
+            <div class="furniture-scan-grid">
+              <button id="btn-scan-shelves" class="furniture-btn">
+                <span class="btn-icon">📚</span>
+                <span>Shelves / Books</span>
+              </button>
+              <button id="btn-scan-table" class="furniture-btn">
+                <span class="btn-icon">🪑</span>
+                <span>Table (Hiding)</span>
+              </button>
+              <button id="btn-scan-couch" class="furniture-btn">
+                <span class="btn-icon">🛋️</span>
+                <span>Sofa / Couch</span>
+              </button>
+              <button id="btn-scan-chair" class="furniture-btn">
+                <span class="btn-icon">💺</span>
+                <span>Chair / Seat</span>
+              </button>
+              <button id="btn-scan-cabinet" class="furniture-btn">
+                <span class="btn-icon">🚪</span>
+                <span>Tall Cabinet</span>
+              </button>
+            </div>
+            <div id="scanned-objects-list" class="scanned-objects-container"></div>
+          </div>
+
+          <!-- Step 5: Safe Zone Designation -->
+          <div id="calib-step-5" class="calib-step hidden">
+            <div class="calib-step-header">
+              <span class="step-num">STEP 5: SAFE ZONE WARDS</span>
               <span><span id="safe-zones-count">0</span> Wards</span>
             </div>
-            <p id="safe-zone-msg" style="font-size: 0.8rem; color: var(--text-dim);">Walk to hiding spot (under table/couch) and tap below:</p>
+            <p id="safe-zone-msg" style="font-size: 0.8rem; color: var(--text-dim);">Aim at hiding nook (under table/closet) and tap below:</p>
             <div class="calib-input-row">
               <select id="safe-zone-type-select">
                 <option value="Under Table / Couch">Under Table / Couch</option>
                 <option value="Closet Nook">Closet Nook</option>
                 <option value="Shadow Corner">Shadow Corner</option>
               </select>
-              <button id="btn-place-safe-zone" class="calib-btn">🛡️ PLACE SAFE ZONE</button>
+              <button id="btn-place-safe-zone" class="calib-btn">🛡️ PLACE WARD</button>
             </div>
           </div>
         </div>
@@ -2180,14 +2336,15 @@ window.micMonitor = new MicrophoneMonitor();
 
 
 /**
- * ANOMALY PROTOCOL - Spatial Tracking & Calibration Manager
+ * ANOMALY PROTOCOL - 3D Spatial Tracking, LiDAR Scanner & Furniture Object Engine
  * Handles:
  * 1. Floor & Ceiling Height Calibration
  * 2. Room-by-Room Boundary Scanner & Anchor Registration
- * 3. AR Safe Zone Manual Placement & Occlusion Bounds
- * 4. 8th Wall SLAM tracking events & Lost-Tracking Recovery Guidance
- * 5. Robust Live AR Camera Video Pass-Through & Camera Toggle
- * 6. Smooth AR Simulator mode (WASD + Mouse/Touch Drag + Gyro) for CodePen/Desktop/Mobile
+ * 3. 3D Physical Furniture & Obstacle Scanner (Shelves, Chairs, Tables, Couches, Cabinets)
+ * 4. Real-Time 3D Ray-Box Line-of-Sight (LOS) Occlusion & Under-Object Safe Zones
+ * 5. Holographic Wireframe Meshes, Reticle Raycasting & LiDAR Sonar Wave Pulses
+ * 6. 8th Wall SLAM tracking events & Lost-Tracking Recovery Guidance
+ * 7. Unified Smooth AR Simulator controls (WASD, Mouse/Touch drag, Gyroscope)
  */
 
 class SpatialTracker {
@@ -2196,12 +2353,15 @@ class SpatialTracker {
     this.ceilingY = 2.4;
     this.isCalibrated = false;
 
-    // Calibration steps: 'INIT' | 'FLOOR' | 'CEILING' | 'ROOMS' | 'SAFE_ZONES' | 'READY'
+    // Calibration steps: 'INIT' | 'FLOOR' | 'CEILING' | 'ROOMS' | 'OBJECTS' | 'SAFE_ZONES' | 'READY'
     this.calibrationStep = 'INIT';
 
     // Rooms mapped by user
     this.rooms = []; // { id, name, center: {x,y,z}, radius, corners: [] }
     this.currentScanningRoom = null;
+
+    // 3D Physical Scanned Furniture & Obstacles
+    this.scannedObjects = []; // Array of SpatialObject
 
     // Safe Zones placed in AR
     this.safeZones = []; // { id, name, position: {x,y,z}, radius: 1.3, type: 'Couch' | 'Table' | 'Closet' }
@@ -2227,6 +2387,64 @@ class SpatialTracker {
 
     this.isInitialized = false;
     this.controlsBound = false;
+
+    // Object Archetype Definitions with physical collision & gameplay behaviors
+    this.OBJECT_ARCHETYPES = {
+      SHELVES: {
+        type: 'SHELVES',
+        name: 'Bookshelf / Wall Shelves',
+        icon: '📚',
+        dimensions: { w: 1.3, h: 2.0, d: 0.5 },
+        blocksLOS: true,
+        allowsHiding: false,
+        color: '#00e5ff'
+      },
+      TABLE: {
+        type: 'TABLE',
+        name: 'Table / Desk',
+        icon: '🪑',
+        dimensions: { w: 1.6, h: 0.85, d: 0.95 },
+        blocksLOS: false,
+        allowsHiding: true, // Creates safe shelter beneath
+        color: '#00ff88'
+      },
+      CHAIR: {
+        type: 'CHAIR',
+        name: 'Armchair / Seat',
+        icon: '💺',
+        dimensions: { w: 0.75, h: 0.9, d: 0.75 },
+        blocksLOS: false,
+        allowsHiding: false,
+        color: '#ffb700'
+      },
+      COUCH: {
+        type: 'COUCH',
+        name: 'Sofa / Couch',
+        icon: '🛋️',
+        dimensions: { w: 2.2, h: 0.9, d: 0.95 },
+        blocksLOS: true,
+        allowsHiding: true,
+        color: '#00ffaa'
+      },
+      CABINET: {
+        type: 'CABINET',
+        name: 'Tall Cabinet / Wardrobe',
+        icon: '🚪',
+        dimensions: { w: 1.1, h: 2.1, d: 0.65 },
+        blocksLOS: true,
+        allowsHiding: true,
+        color: '#a855f7'
+      },
+      OBSTACLE: {
+        type: 'OBSTACLE',
+        name: 'General Obstacle / Barrier',
+        icon: '📦',
+        dimensions: { w: 1.0, h: 1.2, d: 1.0 },
+        blocksLOS: true,
+        allowsHiding: false,
+        color: '#ff0055'
+      }
+    };
   }
 
   init(sceneEl, cameraEl) {
@@ -2458,9 +2676,10 @@ class SpatialTracker {
   // Step 1: Record Floor Y
   calibrateFloor() {
     const camPos = this.getCameraPosition();
-    this.floorY = camPos.y; // Or phone placed flat on floor
+    this.floorY = camPos.y;
     this.calibrationStep = 'CEILING';
     if (window.soundEngine) window.soundEngine.playUiBeep(520);
+    this.triggerLidarScanPulse();
     return this.floorY;
   }
 
@@ -2470,6 +2689,7 @@ class SpatialTracker {
     this.ceilingY = Math.max(this.floorY + 1.8, camPos.y + 1.0);
     this.calibrationStep = 'ROOMS';
     if (window.soundEngine) window.soundEngine.playUiBeep(780);
+    this.triggerLidarScanPulse();
     return this.ceilingY;
   }
 
@@ -2484,6 +2704,7 @@ class SpatialTracker {
       radius: 3.5
     };
     if (window.soundEngine) window.soundEngine.playUiBeep(600);
+    this.triggerLidarScanPulse();
     return this.currentScanningRoom;
   }
 
@@ -2507,6 +2728,7 @@ class SpatialTracker {
 
     // Add visual waypoint beacon in AR
     this.spawnSpatialAnchorMarker(camPos, '#00ffcc', this.currentScanningRoom.name);
+    this.triggerLidarScanPulse();
     if (window.soundEngine) window.soundEngine.playUiBeep(880);
     return camPos;
   }
@@ -2524,14 +2746,76 @@ class SpatialTracker {
     this.currentScanningRoom = null;
 
     if (window.soundEngine) window.soundEngine.playUiBeep(1040);
+    this.triggerLidarScanPulse();
     return completedRoom;
   }
 
-  // Step 4: Place AR Safe Zone Marker
+  // --- 3D FURNITURE & PHYSICAL OBJECT SCANNER ---
+
+  /**
+   * Scan physical furniture at the player's AR reticle crosshair.
+   * @param {string} archetypeKey - 'SHELVES' | 'TABLE' | 'CHAIR' | 'COUCH' | 'CABINET' | 'OBSTACLE'
+   * @param {string} customLabel - Custom user name
+   * @param {Object} customPos - Optional explicit position {x, y, z}
+   * @param {Object} customDims - Optional custom dimensions {w, h, d}
+   */
+  scan3DObject(archetypeKey = 'SHELVES', customLabel = null, customPos = null, customDims = null) {
+    const archetype = this.OBJECT_ARCHETYPES[archetypeKey] || this.OBJECT_ARCHETYPES.OBSTACLE;
+    const targetPos = customPos || this.getReticleRaycastPosition(1.8);
+    const dims = customDims || { ...archetype.dimensions };
+    const camRot = this.getCameraRotation();
+
+    const obj = {
+      id: 'obj_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+      type: archetype.type,
+      name: customLabel || archetype.name,
+      icon: archetype.icon,
+      position: {
+        x: targetPos.x,
+        y: this.floorY + (dims.h / 2),
+        z: targetPos.z
+      },
+      rotationY: camRot.y || 0,
+      dimensions: dims,
+      blocksLOS: archetype.blocksLOS,
+      allowsHiding: archetype.allowsHiding,
+      color: archetype.color
+    };
+
+    this.scannedObjects.push(obj);
+
+    // If this object allows hiding (like a table or couch), automatically create a protected safe zone beneath it
+    if (obj.allowsHiding) {
+      this.placeSafeZone(`Under ${obj.name}`, { x: obj.position.x, y: this.floorY, z: obj.position.z });
+    }
+
+    // Spawn 3D holographic wireframe in A-Frame scene
+    this.spawn3DObjectWireframe(obj);
+    this.triggerLidarScanPulse();
+
+    if (window.soundEngine) {
+      window.soundEngine.playSafeZonePlaced();
+    }
+
+    return obj;
+  }
+
+  removeScannedObject(id) {
+    const idx = this.scannedObjects.findIndex(o => o.id === id);
+    if (idx !== -1) {
+      const removed = this.scannedObjects.splice(idx, 1)[0];
+      const el = document.getElementById(id);
+      if (el) el.remove();
+      return removed;
+    }
+    return null;
+  }
+
+  // --- STEP 4: PLACE SAFE ZONE (MANUAL OR AUTO) ---
   placeSafeZone(type = 'Under Table / Couch', customPos = null) {
     const pos = customPos || this.getFloorRaycastPosition();
     const zone = {
-      id: 'safe_' + Date.now(),
+      id: 'safe_' + Date.now() + '_' + Math.floor(Math.random() * 100),
       name: type,
       position: { x: pos.x, y: this.floorY, z: pos.z },
       radius: 1.4, // Protection radius (meters)
@@ -2560,23 +2844,82 @@ class SpatialTracker {
     return { inSafeZone: false, zone: null, distance: Infinity };
   }
 
-  // Check if ray from Ghost to Player is occluded by virtual house walls or Safe Zones
+  // --- 3D RAY-BOX LINE OF SIGHT (LOS) OCCLUSION ALGORITHM ---
+
+  /**
+   * Ray-AABB intersection test for 3D furniture volumes.
+   */
+  rayIntersectsAABB(rayOrig, rayDir, boxMin, boxMax) {
+    let tmin = (boxMin.x - rayOrig.x) / (rayDir.x || 0.00001);
+    let tmax = (boxMax.x - rayOrig.x) / (rayDir.x || 0.00001);
+    if (tmin > tmax) [tmin, tmax] = [tmax, tmin];
+
+    let tymin = (boxMin.y - rayOrig.y) / (rayDir.y || 0.00001);
+    let tymax = (boxMax.y - rayOrig.y) / (rayDir.y || 0.00001);
+    if (tymin > tymax) [tymin, tymax] = [tymax, tymin];
+
+    if ((tmin > tymax) || (tymin > tmax)) return false;
+    if (tymin > tmin) tmin = tymin;
+    if (tymax < tmax) tmax = tymax;
+
+    let tzmin = (boxMin.z - rayOrig.z) / (rayDir.z || 0.00001);
+    let tzmax = (boxMax.z - rayOrig.z) / (rayDir.z || 0.00001);
+    if (tzmin > tzmax) [tzmin, tzmax] = [tzmax, tzmin];
+
+    if ((tmin > tzmax) || (tzmin > tmax)) return false;
+    if (tzmin > tmin) tmin = tzmin;
+    if (tzmax < tmax) tmax = tzmax;
+
+    return tmax > 0.05 && tmin < 1.0; // Intersects segment between ray origin (0) and target (1)
+  }
+
+  /**
+   * Check if ray from Ghost to Player is occluded by 3D physical furniture, virtual walls, or Safe Zones.
+   */
   checkLineOfSightOccluded(ghostPos, playerPos) {
-    // 1. If player is in a Safe Zone, LOS is fully broken (hiding under couch/table)
+    // 1. If player is in a Safe Zone (e.g. crouching under scanned table or couch), LOS is broken!
     const safeCheck = this.isPlayerInSafeZone(playerPos);
     if (safeCheck.inSafeZone) {
       return { occluded: true, reason: 'SAFE_ZONE', zone: safeCheck.zone };
     }
 
-    // 2. Virtual room geometry occlusion:
-    // If ghost and player are in different rooms and distance > 4.5m with walls between them
+    // 2. Check 3D Scanned Furniture Occlusion (e.g. Bookshelves, Cabinets, Large Couches)
+    const rayDir = {
+      x: playerPos.x - ghostPos.x,
+      y: playerPos.y - ghostPos.y,
+      z: playerPos.z - ghostPos.z
+    };
+    const totalDist = Math.hypot(rayDir.x, rayDir.z);
+
+    for (let obj of this.scannedObjects) {
+      if (!obj.blocksLOS) continue;
+
+      const halfW = (obj.dimensions.w / 2) + 0.1;
+      const halfH = (obj.dimensions.h / 2) + 0.1;
+      const halfD = (obj.dimensions.d / 2) + 0.1;
+
+      const boxMin = {
+        x: obj.position.x - halfW,
+        y: obj.position.y - halfH,
+        z: obj.position.z - halfD
+      };
+      const boxMax = {
+        x: obj.position.x + halfW,
+        y: obj.position.y + halfH,
+        z: obj.position.z + halfD
+      };
+
+      if (this.rayIntersectsAABB(ghostPos, rayDir, boxMin, boxMax)) {
+        return { occluded: true, reason: 'FURNITURE_OBSTACLE', object: obj };
+      }
+    }
+
+    // 3. Virtual room geometry occlusion:
     const playerRoom = this.getRoomAt(playerPos);
     const ghostRoom = this.getRoomAt(ghostPos);
 
     if (playerRoom && ghostRoom && playerRoom.id !== ghostRoom.id) {
-      // Different rooms break direct LOS unless close to doorway
-      const directDist = Math.hypot(ghostPos.x - playerPos.x, ghostPos.z - playerPos.z);
-      if (directDist > 3.0) {
+      if (totalDist > 3.0) {
         return { occluded: true, reason: 'WALL_GEOMETRY', playerRoom, ghostRoom };
       }
     }
@@ -2610,13 +2953,13 @@ class SpatialTracker {
     return { ...this.simulatedRot };
   }
 
-  getFloorRaycastPosition() {
+  getReticleRaycastPosition(distance = 1.8) {
     const camPos = this.getCameraPosition();
     const camRot = this.getCameraRotation();
 
-    // Project forward 1.2 meters at floor level
-    const forwardX = -Math.sin(camRot.y || 0) * 1.2;
-    const forwardZ = -Math.cos(camRot.y || 0) * 1.2;
+    // Project along camera yaw and pitch
+    const forwardX = -Math.sin(camRot.y || 0) * Math.cos(camRot.x || 0) * distance;
+    const forwardZ = -Math.cos(camRot.y || 0) * Math.cos(camRot.x || 0) * distance;
 
     return {
       x: camPos.x + forwardX,
@@ -2625,7 +2968,146 @@ class SpatialTracker {
     };
   }
 
-  // --- AR 3D ENTITY SPAWNERS ---
+  getFloorRaycastPosition() {
+    return this.getReticleRaycastPosition(1.4);
+  }
+
+  // --- 3D AR HOLOGRAPHIC WIREFRAME MESH GENERATORS ---
+
+  /**
+   * Spawns rich 3D holographic wireframe mesh for physical scanned furniture.
+   */
+  spawn3DObjectWireframe(obj) {
+    if (!this.sceneEl) this.sceneEl = document.querySelector('a-scene');
+    if (!this.sceneEl) return;
+
+    const group = document.createElement('a-entity');
+    group.setAttribute('id', obj.id);
+    group.setAttribute('position', `${obj.position.x} ${obj.position.y} ${obj.position.z}`);
+    group.setAttribute('rotation', `0 ${(obj.rotationY * (180 / Math.PI)).toFixed(1)} 0`);
+
+    const { w, h, d } = obj.dimensions;
+    const color = obj.color || '#00ffcc';
+
+    // 1. Holographic Outer Bounding Wireframe Box
+    const boundingBox = document.createElement('a-box');
+    boundingBox.setAttribute('width', w.toString());
+    boundingBox.setAttribute('height', h.toString());
+    boundingBox.setAttribute('depth', d.toString());
+    boundingBox.setAttribute('material', `color: ${color}; wireframe: true; opacity: 0.85; transparent: true; emissive: ${color}; emissiveIntensity: 0.6`);
+    group.appendChild(boundingBox);
+
+    // 2. Semi-transparent Cyber Volumetric Core
+    const innerVolume = document.createElement('a-box');
+    innerVolume.setAttribute('width', (w * 0.98).toString());
+    innerVolume.setAttribute('height', (h * 0.98).toString());
+    innerVolume.setAttribute('depth', (d * 0.98).toString());
+    innerVolume.setAttribute('material', `color: ${color}; opacity: 0.12; transparent: true; side: double; depthWrite: false`);
+    group.appendChild(innerVolume);
+
+    // 3. Archetype-Specific Internal Geometry
+    if (obj.type === 'SHELVES') {
+      // Add 3 horizontal shelf tiers
+      for (let i = -0.35; i <= 0.35; i += 0.35) {
+        const shelfPlane = document.createElement('a-box');
+        shelfPlane.setAttribute('position', `0 ${i * h} 0`);
+        shelfPlane.setAttribute('width', (w * 0.92).toString());
+        shelfPlane.setAttribute('height', '0.04');
+        shelfPlane.setAttribute('depth', (d * 0.92).toString());
+        shelfPlane.setAttribute('material', `color: ${color}; opacity: 0.45; transparent: true; emissive: ${color}; emissiveIntensity: 0.4`);
+        group.appendChild(shelfPlane);
+      }
+    } else if (obj.type === 'TABLE') {
+      // Tabletop plane
+      const top = document.createElement('a-box');
+      top.setAttribute('position', `0 ${(h / 2) - 0.04} 0`);
+      top.setAttribute('width', w.toString());
+      top.setAttribute('height', '0.08');
+      top.setAttribute('depth', d.toString());
+      top.setAttribute('material', `color: ${color}; opacity: 0.55; transparent: true; emissive: ${color}; emissiveIntensity: 0.5`);
+      group.appendChild(top);
+
+      // 4 Table legs
+      const legOffsets = [
+        { x: (w / 2) - 0.1, z: (d / 2) - 0.1 },
+        { x: -(w / 2) + 0.1, z: (d / 2) - 0.1 },
+        { x: (w / 2) - 0.1, z: -(d / 2) + 0.1 },
+        { x: -(w / 2) + 0.1, z: -(d / 2) + 0.1 }
+      ];
+      legOffsets.forEach(lo => {
+        const leg = document.createElement('a-cylinder');
+        leg.setAttribute('position', `${lo.x} -0.04 ${lo.z}`);
+        leg.setAttribute('radius', '0.04');
+        leg.setAttribute('height', (h - 0.08).toString());
+        leg.setAttribute('material', `color: ${color}; opacity: 0.7; transparent: true`);
+        group.appendChild(leg);
+      });
+    } else if (obj.type === 'COUCH') {
+      // Backrest
+      const back = document.createElement('a-box');
+      back.setAttribute('position', `0 ${(h * 0.2)} -${(d * 0.35)}`);
+      back.setAttribute('width', w.toString());
+      back.setAttribute('height', (h * 0.6).toString());
+      back.setAttribute('depth', (d * 0.3).toString());
+      back.setAttribute('material', `color: ${color}; opacity: 0.4; transparent: true`);
+      group.appendChild(back);
+    }
+
+    // 4. Floating Holographic HUD AR Label
+    const textEntity = document.createElement('a-entity');
+    textEntity.setAttribute('position', `0 ${(h / 2) + 0.3} 0`);
+    textEntity.setAttribute('text', `value: ${obj.icon} ${obj.name.toUpperCase()}\n[3D OBSTACLE LOCKED]; align: center; color: ${color}; width: 2.2; font: monoid`);
+    textEntity.setAttribute('scale', '0.9 0.9 0.9');
+    group.appendChild(textEntity);
+
+    // 5. Ambient Cyber Light
+    const light = document.createElement('a-light');
+    light.setAttribute('type', 'point');
+    light.setAttribute('color', color);
+    light.setAttribute('intensity', '0.6');
+    light.setAttribute('distance', '2.5');
+    group.appendChild(light);
+
+    this.sceneEl.appendChild(group);
+  }
+
+  // Animated LiDAR Sonar Scan Wave Pulse radiating in 3D
+  triggerLidarScanPulse() {
+    if (!this.sceneEl) this.sceneEl = document.querySelector('a-scene');
+    if (!this.sceneEl) return;
+
+    const camPos = this.getCameraPosition();
+    const pulseRing = document.createElement('a-ring');
+    pulseRing.setAttribute('position', `${camPos.x} ${this.floorY + 0.05} ${camPos.z}`);
+    pulseRing.setAttribute('rotation', '-90 0 0');
+    pulseRing.setAttribute('radius-inner', '0.2');
+    pulseRing.setAttribute('radius-outer', '0.4');
+    pulseRing.setAttribute('material', 'color: #00ffcc; opacity: 0.8; transparent: true; side: double');
+
+    this.sceneEl.appendChild(pulseRing);
+
+    let start = performance.now();
+    const duration = 1200; // ms
+
+    const animatePulse = (now) => {
+      const elapsed = now - start;
+      const progress = Math.min(1.0, elapsed / duration);
+      const currentRadius = 0.3 + (progress * 7.5);
+      const currentOpacity = 0.8 * (1.0 - progress);
+
+      pulseRing.setAttribute('radius-inner', (Math.max(0.1, currentRadius - 0.25)).toString());
+      pulseRing.setAttribute('radius-outer', currentRadius.toString());
+      pulseRing.setAttribute('material', `color: #00ffcc; opacity: ${currentOpacity.toFixed(2)}; transparent: true; side: double`);
+
+      if (progress < 1.0) {
+        requestAnimationFrame(animatePulse);
+      } else {
+        pulseRing.remove();
+      }
+    };
+
+    requestAnimationFrame(animatePulse);
+  }
 
   spawnSpatialAnchorMarker(pos, color = '#00ffcc', label = 'Waypoint') {
     if (!this.sceneEl) this.sceneEl = document.querySelector('a-scene');
@@ -2788,7 +3270,7 @@ class SpatialTracker {
       const deltaSec = Math.min(0.1, (now - lastTickTime) / 1000);
       lastTickTime = now;
 
-      const speed = 2.8 * deltaSec; // ~2.8 m/s walk speed
+      const speed = 2.8 * deltaSec;
       const rotY = this.simulatedRot.y;
 
       let moveX = 0;
@@ -2808,7 +3290,7 @@ class SpatialTracker {
       }
       if (keys['KeyD']) {
         moveX += Math.cos(rotY);
-        moveZ -= Math.sin(rotY);
+        moveZ += Math.sin(rotY);
       }
 
       if (moveX !== 0 || moveZ !== 0) {
@@ -2841,7 +3323,7 @@ class SpatialTracker {
     requestAnimationFrame(updateMovement);
   }
 
-  // Populate default rooms & safe zones if testing quickly
+  // Populate rich 3D demo layout with furnished rooms (shelves, chairs, tables, couches)
   populateDemoLayout() {
     this.floorY = 0.0;
     this.ceilingY = 2.5;
@@ -2849,13 +3331,24 @@ class SpatialTracker {
     this.calibrationStep = 'READY';
 
     this.rooms = [
-      { id: 'room_living', name: 'Living Room', center: { x: 0, y: 0, z: 0 }, radius: 4.0, corners: [{x:-3,y:0,z:-3},{x:3,y:0,z:3}] },
+      { id: 'room_living', name: 'Living Room', center: { x: 0, y: 0, z: 0 }, radius: 4.5, corners: [{x:-3,y:0,z:-3},{x:3,y:0,z:3}] },
       { id: 'room_hallway', name: 'Dark Corridor', center: { x: 0, y: 0, z: -6 }, radius: 3.0, corners: [{x:-1,y:0,z:-4},{x:1,y:0,z:-8}] },
-      { id: 'room_bedroom', name: 'Master Bedroom', center: { x: -5, y: 0, z: -6 }, radius: 3.5, corners: [{x:-7,y:0,z:-4},{x:-3,y:0,z:-8}] }
+      { id: 'room_library', name: 'Occult Study', center: { x: -5, y: 0, z: -6 }, radius: 4.0, corners: [{x:-7,y:0,z:-4},{x:-3,y:0,z:-8}] }
     ];
 
-    this.placeSafeZone('Under Sofa / Table', { x: 2.2, y: 0, z: 1.5 });
-    this.placeSafeZone('Closet Nook', { x: -4.5, y: 0, z: -6.5 });
+    // Spawn 3D Physical Furniture Objects
+    // Living Room Sofa & Table
+    this.scan3DObject('COUCH', 'Living Room Sectional', { x: 2.0, y: 0, z: 1.2 });
+    this.scan3DObject('TABLE', 'Oak Coffee Table', { x: 0.5, y: 0, z: 1.8 });
+    this.scan3DObject('CHAIR', 'Leather Armchair', { x: -1.8, y: 0, z: 1.0 });
+
+    // Study Bookshelves (Line of Sight Blockers)
+    this.scan3DObject('SHELVES', 'Tall Grimoire Bookshelf', { x: -4.8, y: 0, z: -4.5 });
+    this.scan3DObject('SHELVES', 'Secondary Archive Shelf', { x: -6.2, y: 0, z: -6.0 });
+    this.scan3DObject('CABINET', 'Locked Curio Cabinet', { x: -4.0, y: 0, z: -7.5 });
+
+    // Hallway Safe Ward
+    this.placeSafeZone('Closet Nook', { x: 0.0, y: 0, z: -7.2 });
   }
 
   reset() {
@@ -2864,6 +3357,7 @@ class SpatialTracker {
     this.isCalibrated = false;
     this.calibrationStep = 'INIT';
     this.rooms = [];
+    this.scannedObjects = [];
     this.safeZones = [];
     this.currentScanningRoom = null;
     this.simulatedPos = { x: 0, y: 1.6, z: 0 };
@@ -2874,9 +3368,9 @@ class SpatialTracker {
       this.cameraEl.object3D.rotation.set(0, 0, 0);
     }
 
-    // Clear spawned AR markers
+    // Clear spawned AR markers and 3D objects
     if (this.sceneEl) {
-      const markers = this.sceneEl.querySelectorAll('[id^="safe_"], [id^="anchor_"]');
+      const markers = this.sceneEl.querySelectorAll('[id^="safe_"], [id^="anchor_"], [id^="obj_"]');
       markers.forEach(m => m.remove());
     }
   }
@@ -3477,7 +3971,14 @@ class GhostEntity {
 
   pickNewWanderTarget(playerPos) {
     const rooms = window.spatialTracker.rooms;
-    if (rooms && rooms.length > 0) {
+    const objects = window.spatialTracker.scannedObjects;
+    if (objects && objects.length > 0 && Math.random() < 0.45) {
+      // 45% chance to wander toward physical scanned furniture (haunting shelves/tables)
+      const obj = objects[Math.floor(Math.random() * objects.length)];
+      const jitterX = (Math.random() * 1.6 - 0.8);
+      const jitterZ = (Math.random() * 1.6 - 0.8);
+      this.targetPosition = { x: obj.position.x + jitterX, y: 0, z: obj.position.z + jitterZ };
+    } else if (rooms && rooms.length > 0) {
       // Pick a random calibrated room center with slight jitter
       const room = rooms[Math.floor(Math.random() * rooms.length)];
       const jitterX = (Math.random() * 2 - 1) * (room.radius * 0.6);
@@ -3735,7 +4236,7 @@ class GameEngine {
       window.spatialTracker.init(sceneEl, cameraEl);
     }
 
-    console.log('[GAME ENGINE] Anomaly Protocol Ready.');
+    console.log('[GAME ENGINE] Anomaly Protocol 3D Spatial Engine Ready.');
   }
 
   cacheDom() {
@@ -3760,6 +4261,10 @@ class GameEngine {
       trackingLostBanner: document.getElementById('tracking-lost-banner'),
       trackingLostMsg: document.getElementById('tracking-lost-msg'),
 
+      // Reticle telemetry
+      arReticle: document.getElementById('ar-reticle'),
+      reticleDistanceVal: document.getElementById('reticle-dist-val'),
+
       // Tool panels
       emfDisplay: document.getElementById('emf-display'),
       emfLevelNumber: document.getElementById('emf-level-number'),
@@ -3777,20 +4282,32 @@ class GameEngine {
       thermalTempText: document.getElementById('thermal-temp-text'),
       thermalFreezingAlert: document.getElementById('thermal-freezing-alert'),
 
-      // Buttons
+      // Calibration elements
       btnStartUrbex: document.getElementById('btn-start-urbex'),
       btnCalibrateFloor: document.getElementById('btn-calib-floor'),
       btnCalibrateCeiling: document.getElementById('btn-calib-ceiling'),
       btnStartRoomScan: document.getElementById('btn-start-room-scan'),
       btnAddCorner: document.getElementById('btn-add-corner'),
       btnEndRoomScan: document.getElementById('btn-end-room-scan'),
+      btnScanShelves: document.getElementById('btn-scan-shelves'),
+      btnScanTable: document.getElementById('btn-scan-table'),
+      btnScanChair: document.getElementById('btn-scan-chair'),
+      btnScanCouch: document.getElementById('btn-scan-couch'),
+      btnScanCabinet: document.getElementById('btn-scan-cabinet'),
+      scannedObjectsCount: document.getElementById('scanned-objects-count'),
+      scannedObjectsList: document.getElementById('scanned-objects-list'),
       btnPlaceSafeZone: document.getElementById('btn-place-safe-zone'),
       btnFinishCalibration: document.getElementById('btn-finish-calibration'),
       btnQuickDemo: document.getElementById('btn-quick-demo'),
+
+      // HUD Action Buttons
       btnRestartGame: document.getElementById('btn-restart-game'),
       btnRestartWin: document.getElementById('btn-restart-win'),
+      btnToggleCamera: document.getElementById('btn-toggle-camera'),
+      btnToggleFlashlight: document.getElementById('btn-toggle-flashlight'),
       btnToggleMic: document.getElementById('btn-toggle-mic'),
       btnSimulateMicNoise: document.getElementById('btn-sim-mic'),
+      btnQuickScanObj: document.getElementById('btn-quick-scan-obj'),
       btnCodex: document.getElementById('btn-codex'),
       btnCloseCodex: document.getElementById('btn-close-codex') || document.getElementById('btnCloseCodex'),
       btnExtract: document.getElementById('btn-extract')
@@ -3806,7 +4323,7 @@ class GameEngine {
       this.startCalibrationPhase();
     });
 
-    // Quick Demo button (skips full mapping for instant play)
+    // Quick Demo button (skips full mapping for instant play with pre-furnished 3D rooms)
     this.dom.btnQuickDemo?.addEventListener('click', () => {
       if (window.soundEngine) window.soundEngine.init();
       if (window.spatialTracker) window.spatialTracker.startCameraStream();
@@ -3856,11 +4373,27 @@ class GameEngine {
 
       const count = window.spatialTracker.rooms.length;
       document.getElementById('rooms-mapped-count').textContent = count;
-      document.getElementById('room-status-text').textContent = `Saved "${completed.name}". Scan another or continue to Safe Zones.`;
+      document.getElementById('room-status-text').textContent = `Saved "${completed.name}". Scan another or proceed to 3D Furniture & Objects.`;
 
       document.getElementById('calib-step-4').classList.remove('hidden');
     });
 
+    // 3D Furniture Scanning Buttons
+    const handleScanFurniture = (archetype, defaultName) => {
+      const obj = window.spatialTracker.scan3DObject(archetype, defaultName);
+      this.updateScannedObjectsList();
+      if (this.dom.btnFinishCalibration) this.dom.btnFinishCalibration.classList.remove('hidden');
+      const step5 = document.getElementById('calib-step-5');
+      if (step5) step5.classList.remove('hidden');
+    };
+
+    this.dom.btnScanShelves?.addEventListener('click', () => handleScanFurniture('SHELVES', 'Bookshelf / Shelf'));
+    this.dom.btnScanTable?.addEventListener('click', () => handleScanFurniture('TABLE', 'Dining Table / Desk'));
+    this.dom.btnScanChair?.addEventListener('click', () => handleScanFurniture('CHAIR', 'Armchair / Chair'));
+    this.dom.btnScanCouch?.addEventListener('click', () => handleScanFurniture('COUCH', 'Living Room Couch'));
+    this.dom.btnScanCabinet?.addEventListener('click', () => handleScanFurniture('CABINET', 'Tall Cabinet'));
+
+    // Step 5: Safe Zone placement
     this.dom.btnPlaceSafeZone?.addEventListener('click', () => {
       const select = document.getElementById('safe-zone-type-select');
       const type = select ? select.value : 'Under Table / Couch';
@@ -3879,19 +4412,32 @@ class GameEngine {
 
     // 3. Tool Switching Dock
     document.querySelectorAll('.tool-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', () => {
         const tool = btn.dataset.tool;
         this.selectActiveTool(tool);
       });
     });
 
     // 4. Flashlight Toggle & Camera Toggle
-    document.getElementById('btn-toggle-camera')?.addEventListener('click', () => {
+    this.dom.btnToggleCamera?.addEventListener('click', () => {
       if (window.spatialTracker) window.spatialTracker.toggleCameraStream();
     });
 
-    document.getElementById('btn-toggle-flashlight')?.addEventListener('click', () => {
+    this.dom.btnToggleFlashlight?.addEventListener('click', () => {
       window.paratronicsTools.toggleFlashlight();
+    });
+
+    // In-game 3D Furniture scan quick trigger
+    this.dom.btnQuickScanObj?.addEventListener('click', () => {
+      const types = ['SHELVES', 'TABLE', 'COUCH', 'CHAIR', 'CABINET'];
+      const chosen = types[window.spatialTracker.scannedObjects.length % types.length];
+      const obj = window.spatialTracker.scan3DObject(chosen);
+      if (window.soundEngine) window.soundEngine.playUiBeep(750);
+      const badge = document.getElementById('safe-zone-status');
+      if (badge) {
+        badge.textContent = `📦 SCANNED: ${obj.name.toUpperCase()}`;
+        setTimeout(() => this.updateHudTelemetry(), 2000);
+      }
     });
 
     // 5. Spirit Box Questions
@@ -3948,78 +4494,74 @@ class GameEngine {
     });
   }
 
+  updateScannedObjectsList() {
+    const listEl = this.dom.scannedObjectsList;
+    const countEl = this.dom.scannedObjectsCount;
+    if (!listEl) return;
+
+    const objects = window.spatialTracker.scannedObjects;
+    if (countEl) countEl.textContent = objects.length;
+
+    listEl.innerHTML = '';
+    objects.forEach(obj => {
+      const item = document.createElement('div');
+      item.className = 'scanned-object-chip';
+      item.innerHTML = `
+        <span>${obj.icon} ${obj.name}</span>
+        <button class="chip-del-btn" data-id="${obj.id}">✕</button>
+      `;
+      item.querySelector('.chip-del-btn').addEventListener('click', () => {
+        window.spatialTracker.removeScannedObject(obj.id);
+        this.updateScannedObjectsList();
+      });
+      listEl.appendChild(item);
+    });
+  }
+
   bindSubsystems() {
     // Bind 8th Wall & Tracking Status
     window.spatialTracker.onTrackingStatusChange = (isLost, msg) => {
       if (isLost) {
-        this.dom.trackingLostBanner.classList.remove('hidden');
-        this.dom.trackingLostMsg.textContent = msg || 'Tracking Lost. Walk slower or return to well-lit zone.';
+        this.dom.trackingLostBanner?.classList.remove('hidden');
+        if (this.dom.trackingLostMsg) {
+          this.dom.trackingLostMsg.textContent = msg || 'Tracking Lost. Walk slower or return to well-lit zone.';
+        }
       } else {
-        this.dom.trackingLostBanner.classList.add('hidden');
+        this.dom.trackingLostBanner?.classList.add('hidden');
       }
     };
 
-    // Bind Mic Monitoring
-    window.micMonitor.onLevelUpdateCallback = (lvl) => {
+    // Bind Mic Vol Spike -> Audio Detection & Ghost Reaction
+    window.micMonitor.onVolumeSpike = (volume, peakDb) => {
+      window.ghostEntity.onPlayerVocalSpike(volume);
+    };
+
+    window.micMonitor.onVolumeUpdate = (volNorm, dbVal) => {
       if (this.dom.micDbFill) {
-        this.dom.micDbFill.style.width = `${lvl * 100}%`;
+        this.dom.micDbFill.style.width = `${Math.min(100, volNorm * 100)}%`;
       }
       if (this.dom.micDbText) {
-        this.dom.micDbText.textContent = `${Math.round(lvl * 100)}%`;
+        this.dom.micDbText.textContent = `${Math.round(volNorm * 100)}%`;
       }
     };
 
-    window.micMonitor.onNoiseSpikeCallback = (lvl) => {
-      if (window.ghostEntity) {
-        window.ghostEntity.onMicrophoneNoiseSpike(lvl);
-      }
+    // Bind Ghost Events
+    window.ghostEntity.onHuntStart = () => {
+      this.dom.huntBanner?.classList.remove('hidden');
+      document.body.classList.add('hunt-mode-active');
+      if (window.soundEngine) window.soundEngine.startHeartbeat(140);
     };
 
-    // Bind Paratronics Tools Callbacks
-    window.paratronicsTools.onEmfUpdate = (level, dist) => {
-      if (this.dom.emfLevelNumber) this.dom.emfLevelNumber.textContent = level;
-      this.dom.emfLeds.forEach((led, idx) => {
-        if (!led) return;
-        if (idx < level) led.classList.add('active');
-        else led.classList.remove('active');
-      });
-    };
+    window.ghostEntity.onHuntEnd = (survived) => {
+      this.dom.huntBanner?.classList.add('hidden');
+      document.body.classList.remove('hunt-mode-active');
+      if (window.soundEngine) window.soundEngine.stopHeartbeat();
 
-    window.paratronicsTools.onSpiritBoxUpdate = (freq, msg) => {
-      if (this.dom.spiritFreqText) this.dom.spiritFreqText.textContent = `${freq} MHz`;
-      if (this.dom.spiritEvpText) this.dom.spiritEvpText.textContent = msg;
-    };
-
-    window.paratronicsTools.onThermalUpdate = (temp, isFreezing) => {
-      if (this.dom.thermalTempText) {
-        this.dom.thermalTempText.textContent = `${temp.toFixed(1)}°C`;
-        this.dom.thermalTempText.style.color = isFreezing ? '#00f7ff' : '#00ffcc';
-      }
-      if (this.dom.thermalFreezingAlert) {
-        if (isFreezing) this.dom.thermalFreezingAlert.classList.remove('hidden');
-        else this.dom.thermalFreezingAlert.classList.add('hidden');
-      }
-    };
-
-    window.paratronicsTools.onHuntTriggerRequested = (reason) => {
-      if (window.ghostEntity) {
-        window.ghostEntity.startHunt(reason);
-      }
-    };
-
-    // Bind Ghost AI Callbacks
-    window.ghostEntity.onStateChange = (state, reason) => {
-      if (state === 'HUNTING') {
-        this.onHuntStarted(reason);
-      } else {
-        this.onHuntEnded(reason);
-      }
-    };
-
-    window.ghostEntity.onHuntSurvived = () => {
-      this.huntsSurvived++;
-      if (this.dom.huntsSurvivedText) {
-        this.dom.huntsSurvivedText.textContent = `${this.huntsSurvived} / ${this.requiredHuntsToWin}`;
+      if (survived) {
+        this.huntsSurvived++;
+        if (this.dom.huntsSurvivedText) {
+          this.dom.huntsSurvivedText.textContent = `${this.huntsSurvived} / ${this.requiredHuntsToWin}`;
+        }
       }
     };
 
@@ -4037,14 +4579,19 @@ class GameEngine {
 
   startCalibrationPhase() {
     this.gameState = 'CALIBRATION';
-    this.dom.calibrationModal.classList.remove('hidden');
-    this.dom.hud.classList.add('hidden');
+    this.dom.calibrationModal?.classList.remove('hidden');
+    this.dom.hud?.classList.add('hidden');
+    const sceneEl = document.querySelector('a-scene');
+    const cameraEl = document.querySelector('#player-camera');
+    if (window.spatialTracker) {
+      window.spatialTracker.init(sceneEl, cameraEl);
+    }
   }
 
   startInvestigationPhase() {
     this.gameState = 'INVESTIGATION';
     this.gameStartTime = Date.now();
-    this.dom.hud.classList.remove('hidden');
+    this.dom.hud?.classList.remove('hidden');
 
     // Initialize Paratronics Tools & Ghost
     window.paratronicsTools.init();
@@ -4069,33 +4616,15 @@ class GameEngine {
       if (this.gameState === 'INVESTIGATION' && !window.ghostEntity.isHunting) {
         const aggression = window.paratronicsTools.activeGhost?.huntAggression || 0.7;
         if (Math.random() < aggression) {
-          window.ghostEntity.startHunt('Periodic Paranormal Surge');
+          window.ghostEntity.triggerHunt();
+        } else {
+          this.scheduleHuntCycle();
         }
       }
-      this.scheduleHuntCycle();
     }, intervalMs);
   }
 
-  // --- HUNT EVENTS ---
-  onHuntStarted(reason) {
-    this.gameState = 'HUNT';
-    if (this.dom.huntBanner) {
-      this.dom.huntBanner.classList.remove('hidden');
-      this.dom.huntBanner.classList.add('hunt-active');
-    }
-    document.body.classList.add('hunt-mode-active');
-  }
-
-  onHuntEnded(reason) {
-    this.gameState = 'INVESTIGATION';
-    if (this.dom.huntBanner) {
-      this.dom.huntBanner.classList.add('hidden');
-      this.dom.huntBanner.classList.remove('hunt-active');
-    }
-    document.body.classList.remove('hunt-mode-active');
-  }
-
-  // --- REAL-TIME HUD TELEMETRY ---
+  // --- HUD TELEMETRY UPDATE LOOP ---
   updateHudTelemetry() {
     if (this.gameState !== 'INVESTIGATION' && this.gameState !== 'HUNT') return;
 
@@ -4107,19 +4636,27 @@ class GameEngine {
       this.dom.roomIndicator.textContent = curRoom ? curRoom.name.toUpperCase() : 'UNMAPPED CORRIDOR';
     }
 
-    // 2. Safe Zone Protection Status
+    // 2. Safe Zone & 3D Obstacle Protection Status
     const safeCheck = window.spatialTracker.isPlayerInSafeZone(playerPos);
     if (this.dom.safeZoneStatus) {
       if (safeCheck.inSafeZone) {
-        this.dom.safeZoneStatus.textContent = `🛡️ PROTECTED: ${safeCheck.zone.name.toUpperCase()}`;
+        this.dom.safeZoneStatus.textContent = `🛡️ SHELTERED: ${safeCheck.zone.name.toUpperCase()}`;
         this.dom.safeZoneStatus.className = 'status-badge safe';
       } else {
-        this.dom.safeZoneStatus.textContent = `⚠️ EXPOSED (OUT OF SAFE ZONE)`;
+        const objCount = window.spatialTracker.scannedObjects.length;
+        this.dom.safeZoneStatus.textContent = `⚠️ EXPOSED (${objCount} 3D OBSTACLES MAPPED)`;
         this.dom.safeZoneStatus.className = 'status-badge exposed';
       }
     }
 
-    // 3. Hunt Status & Broken LOS 5s countdown
+    // 3. Reticle Distance Telemetry
+    const retPos = window.spatialTracker.getReticleRaycastPosition(2.0);
+    const retDist = Math.hypot(retPos.x - playerPos.x, retPos.z - playerPos.z);
+    if (this.dom.reticleDistanceVal) {
+      this.dom.reticleDistanceVal.textContent = `${retDist.toFixed(1)}m`;
+    }
+
+    // 4. Hunt Status & Broken LOS 5s countdown
     if (window.ghostEntity.isHunting) {
       const lostSec = window.ghostEntity.lostLOSTimer;
       const remainingSec = Math.max(0, 5.0 - lostSec).toFixed(1);
@@ -4134,7 +4671,7 @@ class GameEngine {
         if (this.dom.huntStatusText) {
           this.dom.huntStatusText.textContent = safeCheck.inSafeZone
             ? 'HIDDEN IN SAFE ZONE. HOLD STILL (PEEKING DANGER)!'
-            : 'LOS BROKEN BEHIND GEOMETRY! KEEP HIDDEN!';
+            : 'LOS BROKEN BEHIND 3D OBSTACLE / WALL! STAY HIDDEN!';
           this.dom.huntStatusText.style.color = '#00ffcc';
         }
         if (this.dom.huntTimerText) {
@@ -4143,7 +4680,7 @@ class GameEngine {
       }
     }
 
-    // 4. Sanity Drainage
+    // 5. Sanity Drainage
     const ghostDist = window.paratronicsTools.emfDistance;
     if (ghostDist < 5.0 || window.ghostEntity.isHunting) {
       this.sanity = Math.max(10, this.sanity - 0.05);
@@ -4207,7 +4744,7 @@ class GameEngine {
         <input type="checkbox" value="${ev.id}" ${isChecked ? 'checked' : ''}>
         <span>${ev.label}</span>
       `;
-      row.querySelector('input').addEventListener('change', (e) => {
+      row.querySelector('input').addEventListener('change', () => {
         window.paratronicsTools.toggleEvidence(ev.id);
         this.renderCodex();
       });
@@ -4222,50 +4759,44 @@ class GameEngine {
       card.className = `ghost-card ${ghost.isPossible ? 'possible' : 'eliminated'}`;
       card.innerHTML = `
         <div class="ghost-card-header">
-          <h4>${ghost.name}</h4>
-          <span class="badge ${ghost.isPossible ? 'badge-match' : 'badge-elim'}">${ghost.isPossible ? 'MATCH' : 'RULED OUT'}</span>
+          <strong>${ghost.name}</strong>
+          <span class="ghost-badge">${ghost.isPossible ? 'POSSIBLE' : 'RULED OUT'}</span>
         </div>
         <p class="ghost-desc">${ghost.description}</p>
-        <div class="ghost-evidence-tags">
-          ${ghost.evidence.map(e => `<span class="tag ${window.paratronicsTools.discoveredEvidence.has(e) ? 'tag-active' : ''}">${e.replace('_', ' ')}</span>`).join('')}
+        <div class="ghost-req-evidence">
+          Evidence: ${ghost.requiredEvidence.map(e => `<span class="ev-tag">${e}</span>`).join(' ')}
         </div>
-        <button class="btn-select-ghost" data-ghost-id="${ghost.id}">SELECT FOR EXTRACTION</button>
       `;
-
-      card.querySelector('.btn-select-ghost').addEventListener('click', () => {
+      card.addEventListener('click', () => {
         document.querySelectorAll('.ghost-card').forEach(c => c.classList.remove('selected'));
         card.classList.add('selected');
         this.selectedGhostId = ghost.id;
       });
-
       listEl.appendChild(card);
     });
 
-    // Update hunts survived count in codex
-    const codexHunts = document.getElementById('codex-hunts-count');
-    if (codexHunts) {
-      codexHunts.textContent = `${this.huntsSurvived} / ${this.requiredHuntsToWin}`;
-      if (this.huntsSurvived >= this.requiredHuntsToWin) {
-        codexHunts.style.color = '#00ffcc';
-      }
+    if (this.dom.huntsSurvivedText) {
+      document.getElementById('codex-hunts-count').textContent = `${this.huntsSurvived} / ${this.requiredHuntsToWin}`;
     }
   }
 
   handleExtractionAttempt() {
     if (!this.selectedGhostId) {
-      alert('Please select a suspected Ghost Archetype from the Codex list before extracting.');
+      alert('Select your ghost deduction in the Codex before extraction!');
       return;
     }
 
-    const result = window.paratronicsTools.verifyIdentification(this.selectedGhostId, this.huntsSurvived);
+    if (this.huntsSurvived < this.requiredHuntsToWin) {
+      alert(`Extraction denied! You must survive ${this.requiredHuntsToWin} hunts (survived: ${this.huntsSurvived}).`);
+      return;
+    }
 
-    if (!result.success) {
-      if (result.reason === 'HUNT_COUNT_INSUFFICIENT') {
-        alert(result.message);
-      } else {
-        // Fatal incorrect guess jumpscare!
-        this.dom.codexModal.classList.add('hidden');
-        this.triggerJumpscareGameOver(`Fatal False Identification! Entity was a ${result.ghost.name}!`);
+    const result = window.paratronicsTools.verifyExtraction(this.selectedGhostId);
+    if (!result.correct) {
+      // Wrong Ghost deduction -> Fatal jumpscare penalty
+      this.triggerJumpscareGameOver(`INCORRECT DEDUCTION! The entity was actually a ${result.ghost.name.toUpperCase()}!`);
+      if (window.soundEngine) {
+        window.soundEngine.playJumpscareHorror();
       }
     } else {
       // VICTORY!
@@ -4290,9 +4821,9 @@ class GameEngine {
     if (this.huntTimer) clearTimeout(this.huntTimer);
 
     // Hide HUD & modals
-    this.dom.hud.classList.add('hidden');
-    this.dom.codexModal.classList.add('hidden');
-    this.dom.calibrationModal.classList.add('hidden');
+    this.dom.hud?.classList.add('hidden');
+    this.dom.codexModal?.classList.add('hidden');
+    this.dom.calibrationModal?.classList.add('hidden');
 
     // Trigger full screen jumpscare glitch overlay
     if (this.dom.jumpscareOverlay) {
@@ -4309,7 +4840,6 @@ class GameEngine {
   }
 
   restartGame() {
-    // Total fatal reset of spatial rooms, safe zones, evidence, and state
     this.huntsSurvived = 0;
     this.sanity = 100;
     this.selectedGhostId = null;
@@ -4336,6 +4866,7 @@ class GameEngine {
     if (this.dom.huntsSurvivedText) this.dom.huntsSurvivedText.textContent = `0 / ${this.requiredHuntsToWin}`;
     if (this.dom.sanityFill) this.dom.sanityFill.style.width = '100%';
     if (this.dom.sanityText) this.dom.sanityText.textContent = '100%';
+    this.updateScannedObjectsList();
 
     this.gameState = 'BOOT';
     if (window.soundEngine) window.soundEngine.playUiBeep(440);
