@@ -46,9 +46,23 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background-color: #000;
+  background-color: transparent !important;
+  background: transparent !important;
   font-family: var(--font-body);
   color: var(--text-main);
+}
+
+/* --- LIVE CAMERA PASS-THROUGH BACKGROUND --- */
+#ar-camera-feed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  z-index: 0;
+  pointer-events: none;
+  background-color: #05080f;
 }
 
 /* --- A-FRAME CONTAINER --- */
@@ -59,6 +73,13 @@ a-scene {
   width: 100%;
   height: 100%;
   z-index: 1;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.a-canvas {
+  background: transparent !important;
+  background-color: transparent !important;
 }
 
 /* --- CRT SCANLINES & NOISE OVERLAY --- */
@@ -976,6 +997,9 @@ body.hunt-mode-active #vision-overlay {
 </head>
 <body>
 
+  <!-- Live Physical Camera AR Pass-Through Feed (iOS Safari / Android Chrome) -->
+  <video id="ar-camera-feed" autoplay playsinline webkit-playsinline muted></video>
+
   <!-- Fullscreen Atmospheric CRT Scanlines & Visual Filters -->
   <div class="scanlines-overlay"></div>
   <div id="vision-overlay"></div>
@@ -993,7 +1017,6 @@ body.hunt-mode-active #vision-overlay {
 
   <!-- A-FRAME 3D / AR SCENE -->
   <a-scene
-    xrweb="disableWorldTracking: false"
     embedded
     renderer="antialias: true; alpha: true; colorManagement: true;"
     vr-mode-ui="enabled: false">
@@ -1002,16 +1025,13 @@ body.hunt-mode-active #vision-overlay {
     <a-entity light="type: ambient; color: #08101a; intensity: 0.8"></a-entity>
 
     <!-- Player Camera Rig with Tactical Proximity Flashlight -->
-    <a-camera id="player-camera" position="0 1.6 0" look-controls="pointerLockEnabled: false" wasd-controls="enabled: false">
+    <a-camera id="player-camera" position="0 1.6 0" look-controls="enabled: false" wasd-controls="enabled: false">
       <a-entity
         id="player-flashlight"
         light="type: spot; color: #fff8e7; intensity: 2.5; angle: 45; penumbra: 0.5; distance: 18; castShadow: true;"
         position="0.2 -0.15 -0.1">
       </a-entity>
     </a-camera>
-
-    <!-- Floor boundary grid reference -->
-    <a-grid position="0 0 0" width="40" height="40" color="#00ffcc" opacity="0.08"></a-grid>
   </a-scene>
 
   <!-- TACTICAL PARATRONICS HUD -->
@@ -1111,6 +1131,7 @@ body.hunt-mode-active #vision-overlay {
       </div>
 
       <div class="quick-actions-dock">
+        <button id="btn-toggle-camera" class="action-btn">📷 CAM</button>
         <button id="btn-toggle-flashlight" class="action-btn">🔦 LIGHT</button>
         <button id="btn-toggle-mic" class="action-btn">🎙️ MIC</button>
         <button id="btn-sim-mic" class="action-btn" title="Simulate voice spike on desktop">🗣️ NOISE</button>
@@ -2165,7 +2186,8 @@ window.micMonitor = new MicrophoneMonitor();
  * 2. Room-by-Room Boundary Scanner & Anchor Registration
  * 3. AR Safe Zone Manual Placement & Occlusion Bounds
  * 4. 8th Wall SLAM tracking events & Lost-Tracking Recovery Guidance
- * 5. Built-in AR Simulator mode (WASD + Mouse/Touch) for CodePen/Desktop testing
+ * 5. Robust Live AR Camera Video Pass-Through & Camera Toggle
+ * 6. Smooth AR Simulator mode (WASD + Mouse/Touch Drag + Gyro) for CodePen/Desktop/Mobile
  */
 
 class SpatialTracker {
@@ -2193,18 +2215,199 @@ class SpatialTracker {
     this.cameraEl = null;
     this.sceneEl = null;
 
+    // Camera video stream reference
+    this.activeStream = null;
+    this.hasCameraStream = false;
+    this.facingMode = 'environment';
+
     // Simulator properties
-    this.isSimulator = false;
+    this.isSimulator = true;
     this.simulatedPos = { x: 0, y: 1.6, z: 0 };
     this.simulatedRot = { x: 0, y: 0, z: 0 };
+
+    this.isInitialized = false;
+    this.controlsBound = false;
   }
 
   init(sceneEl, cameraEl) {
-    this.sceneEl = sceneEl;
-    this.cameraEl = cameraEl;
+    if (sceneEl) this.sceneEl = sceneEl;
+    if (cameraEl) this.cameraEl = cameraEl;
+
+    if (!this.sceneEl) {
+      this.sceneEl = document.querySelector('a-scene');
+    }
+    if (!this.cameraEl) {
+      this.cameraEl = document.querySelector('#player-camera');
+    }
+
+    if (this.sceneEl) {
+      if (this.sceneEl.hasLoaded) {
+        this.makeSceneTransparent();
+      } else {
+        this.sceneEl.addEventListener('loaded', () => this.makeSceneTransparent());
+        this.sceneEl.addEventListener('renderstart', () => this.makeSceneTransparent());
+      }
+    }
+
+    // Try starting camera stream
+    this.startCameraStream();
+
+    if (!this.controlsBound) {
+      this.initSimulatorControls();
+      this.controlsBound = true;
+    }
 
     this.bind8thWallEvents();
-    this.initSimulatorControls();
+    this.isInitialized = true;
+  }
+
+  makeSceneTransparent() {
+    try {
+      if (this.sceneEl && this.sceneEl.renderer) {
+        this.sceneEl.renderer.setClearColor(0x000000, 0);
+        this.sceneEl.renderer.autoClear = true;
+      }
+      const canvas = document.querySelector('.a-canvas');
+      if (canvas) {
+        canvas.style.backgroundColor = 'transparent';
+      }
+      if (this.sceneEl) {
+        this.sceneEl.style.backgroundColor = 'transparent';
+      }
+    } catch (e) {
+      console.warn('Canvas transparency setup:', e);
+    }
+  }
+
+  async startCameraStream() {
+    try {
+      if (this.hasCameraStream && this.activeStream) {
+        return true;
+      }
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.warn('getUserMedia not supported in this browser environment.');
+        this.updateCameraUiState(false, 'CAM (N/A)');
+        return false;
+      }
+
+      let stream = null;
+      const constraintsList = [
+        { video: { facingMode: { ideal: this.facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false },
+        { video: { facingMode: this.facingMode }, audio: false },
+        { video: { facingMode: 'user' }, audio: false },
+        { video: true, audio: false }
+      ];
+
+      for (const constraints of constraintsList) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+          if (stream) break;
+        } catch (err) {
+          // try next fallback
+        }
+      }
+
+      if (!stream) {
+        console.warn('Could not acquire any camera video stream.');
+        this.updateCameraUiState(false, '📷 CAM OFF');
+        return false;
+      }
+
+      this.activeStream = stream;
+      const videoEl = document.getElementById('ar-camera-feed');
+      if (videoEl) {
+        videoEl.setAttribute('playsinline', 'true');
+        videoEl.setAttribute('webkit-playsinline', 'true');
+        videoEl.muted = true;
+        videoEl.autoplay = true;
+        videoEl.srcObject = stream;
+        try {
+          await videoEl.play();
+        } catch (pe) {
+          console.warn('Video play auto-start error:', pe);
+        }
+      }
+
+      this.hasCameraStream = true;
+      this.makeSceneTransparent();
+      this.updateCameraUiState(true, '📷 CAM ON');
+
+      // Request Gyroscope / Motion orientation after camera is connected
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        try {
+          const perm = await DeviceOrientationEvent.requestPermission();
+          if (perm === 'granted') {
+            this.bindDeviceOrientation();
+          }
+        } catch (ge) {}
+      } else {
+        this.bindDeviceOrientation();
+      }
+
+      return true;
+    } catch (err) {
+      console.warn('Live AR camera access error:', err);
+      this.updateCameraUiState(false, '📷 CAM OFF');
+      return false;
+    }
+  }
+
+  stopCameraStream() {
+    if (this.activeStream) {
+      try {
+        this.activeStream.getTracks().forEach(track => track.stop());
+      } catch (e) {
+        console.warn('Error stopping camera tracks:', e);
+      }
+      this.activeStream = null;
+    }
+
+    const videoEl = document.getElementById('ar-camera-feed');
+    if (videoEl) {
+      videoEl.srcObject = null;
+    }
+
+    this.hasCameraStream = false;
+    this.updateCameraUiState(false, '📷 CAM OFF');
+  }
+
+  async toggleCameraStream() {
+    if (this.hasCameraStream) {
+      this.stopCameraStream();
+      if (window.soundEngine) window.soundEngine.playUiBeep(350);
+      return false;
+    } else {
+      const res = await this.startCameraStream();
+      if (window.soundEngine) window.soundEngine.playUiBeep(res ? 650 : 250);
+      return res;
+    }
+  }
+
+  updateCameraUiState(isActive, text = null) {
+    const btn = document.getElementById('btn-toggle-camera');
+    if (btn) {
+      if (isActive) {
+        btn.classList.add('active');
+        btn.textContent = text || '📷 CAM ON';
+      } else {
+        btn.classList.remove('active');
+        btn.textContent = text || '📷 CAM OFF';
+      }
+    }
+  }
+
+  bindDeviceOrientation() {
+    window.addEventListener('deviceorientation', (e) => {
+      if (e.alpha === null || e.beta === null) return;
+      const radX = ((e.beta || 90) - 90) * (Math.PI / 180);
+      const radY = -(e.alpha || 0) * (Math.PI / 180);
+      this.simulatedRot.x = radX;
+      this.simulatedRot.y = radY;
+      if (this.cameraEl && this.cameraEl.object3D) {
+        this.cameraEl.object3D.rotation.set(radX, radY, 0);
+      }
+    });
   }
 
   bind8thWallEvents() {
@@ -2392,25 +2595,19 @@ class SpatialTracker {
   }
 
   getCameraPosition() {
-    if (this.isSimulator) {
-      return { ...this.simulatedPos };
-    }
     if (this.cameraEl && this.cameraEl.object3D) {
       const pos = this.cameraEl.object3D.position;
       return { x: pos.x, y: pos.y, z: pos.z };
     }
-    return { x: 0, y: 1.6, z: 0 };
+    return { ...this.simulatedPos };
   }
 
   getCameraRotation() {
-    if (this.isSimulator) {
-      return { ...this.simulatedRot };
-    }
     if (this.cameraEl && this.cameraEl.object3D) {
       const rot = this.cameraEl.object3D.rotation;
       return { x: rot.x, y: rot.y, z: rot.z };
     }
-    return { x: 0, y: 0, z: 0 };
+    return { ...this.simulatedRot };
   }
 
   getFloorRaycastPosition() {
@@ -2431,6 +2628,7 @@ class SpatialTracker {
   // --- AR 3D ENTITY SPAWNERS ---
 
   spawnSpatialAnchorMarker(pos, color = '#00ffcc', label = 'Waypoint') {
+    if (!this.sceneEl) this.sceneEl = document.querySelector('a-scene');
     if (!this.sceneEl) return;
 
     const anchorEl = document.createElement('a-entity');
@@ -2465,6 +2663,7 @@ class SpatialTracker {
   }
 
   spawnSafeZoneMarker(zone) {
+    if (!this.sceneEl) this.sceneEl = document.querySelector('a-scene');
     if (!this.sceneEl) return;
 
     const safeEl = document.createElement('a-entity');
@@ -2514,57 +2713,22 @@ class SpatialTracker {
     const keys = {};
     window.addEventListener('keydown', (e) => {
       keys[e.code] = true;
-      if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
-        this.isSimulator = true;
-      }
     });
     window.addEventListener('keyup', (e) => {
       keys[e.code] = false;
     });
 
-    // WASD movement loop
-    setInterval(() => {
-      if (!this.isSimulator) return;
+    // Helper to check if event targets interactive UI
+    const isUiTarget = (el) => {
+      return el && el.closest && el.closest('#hud, #calibration-modal, #codex-modal, #boot-modal, #victory-modal, #jumpscare-overlay, button, input, select, textarea');
+    };
 
-      const speed = 0.08;
-      const rotY = this.simulatedRot.y;
-
-      if (keys['KeyW'] || keys['ArrowUp']) {
-        this.simulatedPos.x -= Math.sin(rotY) * speed;
-        this.simulatedPos.z -= Math.cos(rotY) * speed;
-      }
-      if (keys['KeyS'] || keys['ArrowDown']) {
-        this.simulatedPos.x += Math.sin(rotY) * speed;
-        this.simulatedPos.z += Math.cos(rotY) * speed;
-      }
-      if (keys['KeyA']) {
-        this.simulatedPos.x -= Math.cos(rotY) * speed;
-        this.simulatedPos.z += Math.sin(rotY) * speed;
-      }
-      if (keys['KeyD']) {
-        this.simulatedPos.x += Math.cos(rotY) * speed;
-        this.simulatedPos.z -= Math.sin(rotY) * speed;
-      }
-      if (keys['ArrowLeft']) {
-        this.simulatedRot.y += 0.05;
-      }
-      if (keys['ArrowRight']) {
-        this.simulatedRot.y -= 0.05;
-      }
-
-      // Sync with A-Frame camera object if in simulator mode
-      if (this.cameraEl && this.cameraEl.object3D) {
-        this.cameraEl.object3D.position.set(this.simulatedPos.x, this.simulatedPos.y, this.simulatedPos.z);
-        this.cameraEl.object3D.rotation.set(this.simulatedRot.x, this.simulatedRot.y, this.simulatedRot.z);
-      }
-    }, 20);
-
-    // Mouse drag rotation for simulator
+    // Mouse drag look
     let isDragging = false;
     let lastMouseX = 0, lastMouseY = 0;
+
     window.addEventListener('mousedown', (e) => {
-      // Don't drag if clicking UI buttons
-      if (e.target.closest('#hud, #calibration-modal, #codex-modal, button')) return;
+      if (isUiTarget(e.target)) return;
       isDragging = true;
       lastMouseX = e.clientX;
       lastMouseY = e.clientY;
@@ -2572,14 +2736,13 @@ class SpatialTracker {
 
     window.addEventListener('mousemove', (e) => {
       if (!isDragging) return;
-      this.isSimulator = true;
       const dx = e.clientX - lastMouseX;
       const dy = e.clientY - lastMouseY;
       lastMouseX = e.clientX;
       lastMouseY = e.clientY;
 
-      this.simulatedRot.y -= dx * 0.005;
-      this.simulatedRot.x = Math.max(-1.4, Math.min(1.4, this.simulatedRot.x - dy * 0.005));
+      this.simulatedRot.y -= dx * 0.004;
+      this.simulatedRot.x = Math.max(-1.45, Math.min(1.45, this.simulatedRot.x - dy * 0.004));
 
       if (this.cameraEl && this.cameraEl.object3D) {
         this.cameraEl.object3D.rotation.set(this.simulatedRot.x, this.simulatedRot.y, this.simulatedRot.z);
@@ -2587,6 +2750,95 @@ class SpatialTracker {
     });
 
     window.addEventListener('mouseup', () => { isDragging = false; });
+
+    // Touch drag look for mobile / tablets
+    let touchDragging = false;
+    let lastTouchX = 0, lastTouchY = 0;
+
+    window.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1 && !isUiTarget(e.target)) {
+        touchDragging = true;
+        lastTouchX = e.touches[0].clientX;
+        lastTouchY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      if (!touchDragging || e.touches.length !== 1) return;
+      const dx = e.touches[0].clientX - lastTouchX;
+      const dy = e.touches[0].clientY - lastTouchY;
+      lastTouchX = e.touches[0].clientX;
+      lastTouchY = e.touches[0].clientY;
+
+      this.simulatedRot.y -= dx * 0.005;
+      this.simulatedRot.x = Math.max(-1.45, Math.min(1.45, this.simulatedRot.x - dy * 0.005));
+
+      if (this.cameraEl && this.cameraEl.object3D) {
+        this.cameraEl.object3D.rotation.set(this.simulatedRot.x, this.simulatedRot.y, this.simulatedRot.z);
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchend', () => { touchDragging = false; });
+    window.addEventListener('touchcancel', () => { touchDragging = false; });
+
+    // High frequency movement loop for smooth player control
+    let lastTickTime = performance.now();
+    const updateMovement = () => {
+      const now = performance.now();
+      const deltaSec = Math.min(0.1, (now - lastTickTime) / 1000);
+      lastTickTime = now;
+
+      const speed = 2.8 * deltaSec; // ~2.8 m/s walk speed
+      const rotY = this.simulatedRot.y;
+
+      let moveX = 0;
+      let moveZ = 0;
+
+      if (keys['KeyW'] || keys['ArrowUp']) {
+        moveX -= Math.sin(rotY);
+        moveZ -= Math.cos(rotY);
+      }
+      if (keys['KeyS'] || keys['ArrowDown']) {
+        moveX += Math.sin(rotY);
+        moveZ += Math.cos(rotY);
+      }
+      if (keys['KeyA']) {
+        moveX -= Math.cos(rotY);
+        moveZ += Math.sin(rotY);
+      }
+      if (keys['KeyD']) {
+        moveX += Math.cos(rotY);
+        moveZ -= Math.sin(rotY);
+      }
+
+      if (moveX !== 0 || moveZ !== 0) {
+        const len = Math.hypot(moveX, moveZ);
+        if (len > 0.0001) {
+          this.simulatedPos.x += (moveX / len) * speed;
+          this.simulatedPos.z += (moveZ / len) * speed;
+        }
+      }
+
+      if (keys['KeyQ']) {
+        this.simulatedRot.y += 1.8 * deltaSec;
+      }
+      if (keys['KeyE']) {
+        this.simulatedRot.y -= 1.8 * deltaSec;
+      }
+
+      // Continuous sync with A-Frame camera object
+      if (!this.cameraEl) {
+        this.cameraEl = document.querySelector('#player-camera');
+      }
+      if (this.cameraEl && this.cameraEl.object3D) {
+        this.cameraEl.object3D.position.set(this.simulatedPos.x, this.simulatedPos.y, this.simulatedPos.z);
+        this.cameraEl.object3D.rotation.set(this.simulatedRot.x, this.simulatedRot.y, this.simulatedRot.z);
+      }
+
+      requestAnimationFrame(updateMovement);
+    };
+
+    requestAnimationFrame(updateMovement);
   }
 
   // Populate default rooms & safe zones if testing quickly
@@ -2617,6 +2869,11 @@ class SpatialTracker {
     this.simulatedPos = { x: 0, y: 1.6, z: 0 };
     this.simulatedRot = { x: 0, y: 0, z: 0 };
 
+    if (this.cameraEl && this.cameraEl.object3D) {
+      this.cameraEl.object3D.position.set(0, 1.6, 0);
+      this.cameraEl.object3D.rotation.set(0, 0, 0);
+    }
+
     // Clear spawned AR markers
     if (this.sceneEl) {
       const markers = this.sceneEl.querySelectorAll('[id^="safe_"], [id^="anchor_"]');
@@ -2644,7 +2901,7 @@ const GHOST_ARCHETYPES = [
     id: 'wraith',
     name: 'Wraith',
     description: 'An ethereal shadow entity capable of traveling through physical obstacles and sensing breathing.',
-    evidence: ['EMF_5', 'SPIRIT_BOX', 'MIC_SENSITIVE'],
+    evidence: ['EMF_5', 'SPIRIT_BOX', 'GHOST_ORBS'],
     huntAggression: 0.7,
     evpResponses: ['BEHIND YOU', 'COLD', 'WATCHING'],
     huntTriggerWords: ['LEAVE', 'ATTACK']
@@ -3472,6 +3729,12 @@ class GameEngine {
     this.bindEvents();
     this.bindSubsystems();
 
+    const sceneEl = document.querySelector('a-scene');
+    const cameraEl = document.querySelector('#player-camera');
+    if (window.spatialTracker) {
+      window.spatialTracker.init(sceneEl, cameraEl);
+    }
+
     console.log('[GAME ENGINE] Anomaly Protocol Ready.');
   }
 
@@ -3538,6 +3801,7 @@ class GameEngine {
     // 1. Boot Button
     this.dom.btnStartUrbex?.addEventListener('click', () => {
       if (window.soundEngine) window.soundEngine.init();
+      if (window.spatialTracker) window.spatialTracker.startCameraStream();
       this.dom.bootModal.classList.add('hidden');
       this.startCalibrationPhase();
     });
@@ -3545,6 +3809,7 @@ class GameEngine {
     // Quick Demo button (skips full mapping for instant play)
     this.dom.btnQuickDemo?.addEventListener('click', () => {
       if (window.soundEngine) window.soundEngine.init();
+      if (window.spatialTracker) window.spatialTracker.startCameraStream();
       this.dom.bootModal.classList.add('hidden');
       this.dom.calibrationModal.classList.add('hidden');
       window.spatialTracker.populateDemoLayout();
@@ -3620,7 +3885,11 @@ class GameEngine {
       });
     });
 
-    // 4. Flashlight Toggle
+    // 4. Flashlight Toggle & Camera Toggle
+    document.getElementById('btn-toggle-camera')?.addEventListener('click', () => {
+      if (window.spatialTracker) window.spatialTracker.toggleCameraStream();
+    });
+
     document.getElementById('btn-toggle-flashlight')?.addEventListener('click', () => {
       window.paratronicsTools.toggleFlashlight();
     });
